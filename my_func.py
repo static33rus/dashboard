@@ -5,6 +5,7 @@ import pandas as pd
 import xlsxwriter
 import time
 import openpyxl
+from pprint import pprint
 from openpyxl.styles import Border, Side, Style, Color, PatternFill
 
 PATH=os.getcwd()
@@ -16,7 +17,10 @@ def get_url(operators):
         dvo_list=operator['dvo']
         job=operator['job']
         for dvo in dvo_list:
-            download_url.append("http://10.72.1.46/view/{provider}/job/{job}/dumptemplate={dvo},label=SORM_server/test_results_analyzer/".format(provider=provider,job=job, dvo=dvo))
+            if operator['provider']=="ALL_OPERATORS_IMS":
+                download_url.append("http://10.72.1.46/view/{provider}/job/{job}/OPERATOR={dvo},label=SORM_server/test_results_analyzer/".format(provider=provider,job=job, dvo=dvo))
+            else:
+                download_url.append("http://10.72.1.46/view/{provider}/job/{job}/dumptemplate={dvo},label=SORM_server/test_results_analyzer/".format(provider=provider,job=job, dvo=dvo))
         operator['url']=download_url
     return operators
 
@@ -107,9 +111,13 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
         ####Создадим дифф таблицу
         finaldf.to_csv("download/tmp.csv", index=False)
         finaldf=rename_test_column("download/tmp.csv")
-        diff_table=diff_table.append(create_diff_table(finaldf,operator['provider']))
+        finaldf = finaldf.sort_index(ascending=False, axis=1)
+        real_num_of_progons=(len(list(finaldf.head(0))))-1
+        diff_for_one_operator=create_diff_table(finaldf,operator['provider'])
+        diff_for_one_operator.to_excel(excel_writer, operator['provider'],startrow=1 , startcol=real_num_of_progons+2,index=False)
+        diff_table=diff_table.append(diff_for_one_operator)
         diff_tables_len.append(len(diff_table))
-        diff_table.to_excel(excel_writer, 'SUMMARY',startrow=1 , startcol=5,index=False)
+
 
         ###Считаем сколько passed,failed,skipped тестов и создаем отдельную таблицу        
         passed=countif_in_rows("PASSED",finaldf)
@@ -152,13 +160,17 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
                                      'valign': 'top',
                                      'fg_color': '#DDD9C4',
                                      'border': 1})
-        
+        merge_format = workbook.add_format({'align': 'center','bold':     True,'font_color': '#FF0000'})
+
         width = 40
-        worksheet.set_column(0, 0, width)
-        worksheet.set_column(number_of_progons+2, number_of_progons+2, width/2)
-        worksheet.set_column(number_of_progons+3, number_of_progons+3, width+50)
-        
-        end=colnum_string(number_of_progons+1)+str(len(finaldf)+1)
+        worksheet.set_column(0, 0, 25)
+        worksheet.set_column(1, real_num_of_progons, 7)
+        worksheet.set_column(real_num_of_progons+2, real_num_of_progons+2, width-15)
+        worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width-3)
+        worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width-15)
+        worksheet.merge_range(colnum_string(real_num_of_progons+3)+'1:'+colnum_string(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
+
+        end=colnum_string(real_num_of_progons+1)+str(len(finaldf)+1)
         worksheet.conditional_format('B2:'+end, {'type':     'cell',
                                                  'criteria': '==',
                                                  'value':    '"FAILED"',
@@ -180,16 +192,18 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
     total_previous_df.loc[len(total_df)]=["Всего: ",previous_passed,previous_failed,previous_skipped]
     total_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=1,index=False)
     total_previous_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=len(total_df)+4,index=False)
+    diff_table.to_excel(excel_writer, 'SUMMARY',startrow=1 , startcol=5,index=False)
     ###Форматирование summary страницы
-    worksheet2 = excel_writer.sheets["SUMMARY"]
-    merge_format = workbook.add_format({'align': 'center','bold':     True,'font_color': '#FF0000'})
+    worksheet2 = excel_writer.sheets["SUMMARY"]   
     worksheet2.merge_range('A1:D1', 'Cтатистика по последнему прогону', merge_format)
     worksheet2.merge_range('F1:H1', 'Таблица сравнения между выбранными прогонами', merge_format)
     worksheet2.merge_range('A'+str(len(total_df)+4)+':D'+str(len(total_df)+4), 'Cтатистика по предыдущему прогону', merge_format)
-    worksheet2.set_column(5, 8, width-15)
-    worksheet2.set_column(0, 3, 15)
+    worksheet2.set_column(5, 5, width-15)
+    worksheet2.set_column(6, 6, width-3)
+    worksheet2.set_column(7, 7, width-15)
+    worksheet2.set_column(0, 3, 22)
     excel_writer.save()
-    return timestr, length_dfs, len(total_df)+1, diff_tables_len
+    return timestr, length_dfs, len(total_df)+1, diff_tables_len, real_num_of_progons
 
 def set_border(ws, cell_range, fill=False, color="DDD9C4"):
     border = Border(left=Side(border_style='thin', color='000000'),
@@ -242,7 +256,7 @@ def create_diff_table(df,provider):
     yesterday=df[df.columns[2]]
     
     passed=["#########################"]
-    failed=["#########"+provider+"#########"]
+    failed=["#############"+provider+"#############"]
     norun=["#########################"]
     for i in range(0,len(test)-1):
         if str(today[i])==str(yesterday[i]):
@@ -251,7 +265,7 @@ def create_diff_table(df,provider):
             passed.append(test[i])
         if str(today[i])=='FAILED' and (str(yesterday)!='FAILED' or str(yesterday)=='SKIPPED'):
             failed.append(test[i])
-        if str(today[i])=='nan' and str(yesterday)!='nan':
+        if str(today[i])=='' and str(yesterday)!='':
             norun.append(test[i])
     
     s1=pd.Series(passed,name='Стали работать')
