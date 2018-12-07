@@ -66,7 +66,9 @@ finally:
 
 wb = openpyxl.load_workbook("report/"+timestr+".xlsx")    
 n=0
+previous=0
 for operator in dict_with_url:
+    current=diff_df_len[n]-previous
     ws = wb[operator['provider']]
     if real_num_of_progons>number_of_progons:
         print("Скорее всего сейчас проходит очередной прогон или один из прогонов не завершился успешно")
@@ -75,10 +77,11 @@ for operator in dict_with_url:
     set_border(ws, "A1:"+end)
     set_border(ws, "A"+str(length_dfs[n]-3)+":"+end,fill=True, color="95B3D7")
     strt=colnum_string(real_num_of_progons+3)+"2"
-    stop=colnum_string(real_num_of_progons+5)+str(diff_df_len[n]+2)
+    stop=colnum_string(real_num_of_progons+5)+str(current+2)
     fill=colnum_string(real_num_of_progons+3)+"3"+":"+colnum_string(real_num_of_progons+5)+"3"
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
+    previous=diff_df_len[n]
     n+=1
 
 ws = wb["SUMMARY"]
@@ -89,7 +92,7 @@ set_border(ws, "A"+str(total_df_len+1)+":D"+str(total_df_len+1),fill=True, color
 ###Форматируем total таблицу по предыдущему прогону
 set_border(ws, 'A'+str(total_df_len+4)+':D'+str(total_df_len*2+3))
 set_border(ws, "A"+str(total_df_len*2+3)+":D"+str(total_df_len*2+3),fill=True, color="95B3D7")
-###Форматируем diff таблицу
+###Форматируем total_diff таблицу
 set_border(ws, "F3:H3",fill=True, color="95B3D7")
 for item in diff_df_len[:-1]:
     set_border(ws, "F"+str(3+item)+":H"+str(3+item),fill=True, color="95B3D7")
