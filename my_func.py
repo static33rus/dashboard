@@ -6,7 +6,8 @@ import xlsxwriter
 import time
 import openpyxl
 from pprint import pprint
-from openpyxl.styles import Border, Side, Style, Color, PatternFill
+from openpyxl.styles import Font, Border, Side, Style, Color, PatternFill, Alignment
+from openpyxl.utils import coordinate_from_string
 
 PATH=os.getcwd()
 
@@ -26,7 +27,7 @@ def get_url(operators):
 
 def download_from_url(url_list,num,sleep=3):
     options = webdriver.ChromeOptions()
-    options.headless = True
+    options.headless = False
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(PATH+'/chromedriver',chrome_options=options)  # Optional argument, if not specified will search path.
@@ -109,15 +110,14 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
             finaldf=finaldf.append(df,sort=False)
 
         ####Создадим дифф таблицу
-        finaldf.to_csv("download/tmp.csv", index=False)
-        finaldf=rename_test_column("download/tmp.csv")
+        finaldf.to_csv("download/"+operator['provider']+".csv", index=False)
+        finaldf=rename_test_column("download/"+operator['provider']+".csv")
         finaldf = finaldf.sort_index(ascending=False, axis=1)
         real_num_of_progons=(len(list(finaldf.head(0))))-1
-        diff_for_one_operator=create_diff_table(finaldf,operator['provider'])
+        diff_for_one_operator=create_diff_table(finaldf,operator['provider'], include_provider_name=True)
         diff_for_one_operator.to_excel(excel_writer, operator['provider'],startrow=1 , startcol=real_num_of_progons+2,index=False)
         diff_table=diff_table.append(diff_for_one_operator)
         diff_tables_len.append(len(diff_table))
-
 
         ###Считаем сколько passed,failed,skipped тестов и создаем отдельную таблицу        
         passed=countif_in_rows("PASSED",finaldf)
@@ -196,7 +196,7 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
     ###Форматирование summary страницы
     worksheet2 = excel_writer.sheets["SUMMARY"]   
     worksheet2.merge_range('A1:D1', 'Cтатистика по последнему прогону', merge_format)
-    worksheet2.merge_range('F1:H1', 'Таблица сравнения между выбранными прогонами', merge_format)
+    worksheet2.merge_range('F1:H1', 'Таблица сравнения между последней и предпоследней сборками', merge_format)
     worksheet2.merge_range('A'+str(len(total_df)+4)+':D'+str(len(total_df)+4), 'Cтатистика по предыдущему прогону', merge_format)
     worksheet2.set_column(5, 5, width-15)
     worksheet2.set_column(6, 6, width-3)
@@ -249,15 +249,32 @@ def countif_in_rows(word,df):
         n=0
     return(x)
 
-def create_diff_table(df,provider):
+def create_diff_table(df,provider,builds_to_diff="default",include_provider_name=False):
+    if builds_to_diff=="default":
+        build1=1
+        build2=2
+    else:
+        try:
+            build1=list(df.columns).index(str(builds_to_diff[0]))
+            build2=list(df.columns).index(str(builds_to_diff[1]))
+        except ValueError:
+        	print("В отчете нет информации по сборкам, которые хотите сравнить")
+        	empty_df=pd.DataFrame({'A' : []})
+        	return empty_df
+
     # df=pd.read_csv(csv)
     test=df[df.columns[0]]
-    today=df[df.columns[1]]
-    yesterday=df[df.columns[2]]
+    today=df[df.columns[build1]]
+    yesterday=df[df.columns[build2]]
     
-    passed=["#########################"]
-    failed=["#############"+provider+"#############"]
-    norun=["#########################"]
+    if include_provider_name:
+        passed=[" "]
+        failed=[provider]
+        norun=[" "]
+    else:
+        passed=[]
+        failed=[]
+        norun=[]    	
     for i in range(0,len(test)-1):
         if str(today[i])==str(yesterday[i]):
             continue
@@ -275,3 +292,87 @@ def create_diff_table(df,provider):
     
     df1=pd.concat([s1,s2,s3], axis=1)
     return df1
+
+def get_maximum_row(ws, column):
+    try:
+        return max(coordinate_from_string(cell)[-1]
+            for cell in ws._cells if cell.startswith(column))
+    except ValueError:
+        return 1
+
+def append_df_to_excel(filename, df, startcol, sheet_name='Sheet1', descr=None,
+	                   startrow=None,
+                       truncate_sheet=False, 
+                       **to_excel_kwargs):
+    """
+    Append a DataFrame [df] to existing Excel file [filename]
+    into [sheet_name] Sheet.
+    If [filename] doesn't exist, then this function will create it.
+
+    Parameters:
+      filename : File path or existing ExcelWriter
+                 (Example: '/path/to/file.xlsx')
+      df : dataframe to save to workbook
+      sheet_name : Name of sheet which will contain DataFrame.
+                   (default: 'Sheet1')
+      startrow : upper left cell row to dump data frame.
+                 Per default (startrow=None) calculate the last row
+                 in the existing DF and write to the next row...
+      truncate_sheet : truncate (remove and recreate) [sheet_name]
+                       before writing DataFrame to Excel file
+      to_excel_kwargs : arguments which will be passed to `DataFrame.to_excel()`
+                        [can be dictionary]
+
+    Returns: None
+    """
+    from openpyxl import load_workbook
+
+    # ignore [engine] parameter if it was passed
+    if 'engine' in to_excel_kwargs:
+        to_excel_kwargs.pop('engine')
+
+    writer = pd.ExcelWriter(filename, engine='openpyxl')
+
+    try:
+        # try to open an existing workbook
+
+
+        writer.book = load_workbook(filename)
+
+        # get the last row in the existing Excel sheet
+        # if it was not specified explicitly
+        # if startrow is None and sheet_name in writer.book.sheetnames:
+        #     startrow = writer.book[sheet_name].max_row
+
+        startrow=max(get_maximum_row(writer.book[sheet_name],colnum_string(startcol+1)),
+                     get_maximum_row(writer.book[sheet_name],colnum_string(startcol+2)),
+                     get_maximum_row(writer.book[sheet_name],colnum_string(startcol+3)))
+
+        # truncate sheet
+        if truncate_sheet and sheet_name in writer.book.sheetnames:
+            # index of [sheet_name] sheet
+            idx = writer.book.sheetnames.index(sheet_name)
+            # remove [sheet_name]
+            writer.book.remove(writer.book.worksheets[idx])
+            # create an empty sheet [sheet_name] using old index
+            writer.book.create_sheet(sheet_name, idx)
+
+        # copy existing sheets
+        writer.sheets = {ws.title:ws for ws in writer.book.worksheets}
+    except FileNotFoundError:
+        # file does not exist yet, we will create it
+        pass
+
+    if startrow is None:
+        startrow = 0
+
+    # write out the new sheet
+    df.to_excel(writer, sheet_name, startrow=startrow+2, startcol=startcol, **to_excel_kwargs)
+    if descr!=None:
+        writer.book[sheet_name].merge_cells(colnum_string(startcol+1)+str(startrow+2)+":"+colnum_string(startcol+3)+str(startrow+2))
+        writer.book[sheet_name][colnum_string(startcol+1)+str(startrow+2)]=descr
+        writer.book[sheet_name].cell(colnum_string(startcol+1)+str(startrow+2)).alignment = Alignment(horizontal='center')
+        writer.book[sheet_name].cell(colnum_string(startcol+1)+str(startrow+2)).font = Font(color="FF0000", bold=True)
+    set_border(writer.book[sheet_name], colnum_string(startcol+1)+str(startrow+3)+":"+colnum_string(startcol+3)+str(startrow+3+len(df)))
+    # save the workbook
+    writer.save()
