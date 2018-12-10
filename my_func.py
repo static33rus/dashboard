@@ -3,9 +3,7 @@ import time
 from selenium import webdriver
 import pandas as pd
 import xlsxwriter
-import time
 import openpyxl
-from pprint import pprint
 from openpyxl.styles import Font, Border, Side, Style, Color, PatternFill, Alignment
 from openpyxl.utils import coordinate_from_string
 
@@ -27,7 +25,8 @@ def get_url(operators):
 
 def download_from_url(url_list,num,sleep=3):
     options = webdriver.ChromeOptions()
-    options.headless = False
+    options.headless = True
+    # options.binary_location="/usr/bin/chromium-browser"
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(PATH+'/chromedriver',chrome_options=options)  # Optional argument, if not specified will search path.

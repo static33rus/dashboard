@@ -1,10 +1,10 @@
 from my_func import *
 from bash import bash
-from pprint import pprint
 from openpyxl import load_workbook
 
 number_of_progons=5
 wait=3
+NEED_FOR_USER_DIFF=False
 
 beeline={
          "provider":"Beeline",
@@ -66,12 +66,12 @@ try:
     # os.mkdir("download")
     # download_from_url(dict_with_url, number_of_progons,wait)
     timestr, length_dfs, total_df_len, diff_df_len, real_num_of_progons=merge_df_and_save_to_excel(dict_with_url, number_of_progons)
-    df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
-    user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
-    if not user_diff_table.empty:
-        descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
-        append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
-
+    if NEED_FOR_USER_DIFF==True:
+        df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
+        user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
+        if not user_diff_table.empty:
+            descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
+            append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
 finally:
     print("GOTOVO")
 
