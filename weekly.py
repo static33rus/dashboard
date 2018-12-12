@@ -2,60 +2,67 @@ from my_func import *
 from openpyxl import load_workbook
 
 number_of_progons=5
-wait=3
 NEED_FOR_USER_DIFF=True
+build_num=[348,347]
 
 beeline={
          "provider":"Beeline",
 		 "job":"Beeline_BVT",
 		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
-		 "result":"Beeline_BVT_NEW"
+		 "result":"Beeline_BVT_NEW",
+		 "scenario":"Beeline/Volte/BVT_NEW"
 }
 mts={
          "provider":"MTS",
 		 "job":"MTS_MSK_VOLTE",
 		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
-         "result":"MTS_MSK_VOLTE_COLLECTION"
+         "result":"MTS_MSK_VOLTE_COLLECTION",
+         "scenario":"MTS/PSI2017/volte"
 }
 
 megafon={
          "provider":"Megafon",
 		 "job":"Megafon_IMS_MSK",
 		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
-         "result":"SORM_BVT_Megafon_VoLTE_COLLECTION_MASS_DEVELOP"
+         "result":"SORM_BVT_Megafon_VoLTE_COLLECTION_MASS_DEVELOP",
+         "scenario":"Megafon/Volte/BVT"
 }
 
 rtk={
          "provider":"RTK",
          "job":"SORM_BVT_RTK_NSK_IMS_COLLECTION_MASS",
          "dvo":["CALLDIR","WAIT","HOLD","3PTY","CFU","CFB","CFNRY","ACT_DVO","NEW_DVO","CLIR"],
-         "result":"SORM_BVT_RTK_NSK_IMS_COLLECTION_MAS"
+         "result":"SORM_BVT_RTK_NSK_IMS_COLLECTION_MASS",
+         "scenario":"Rostelecom/IMS/20180628_Novosib"
 }
 
 tele2={
          "provider":"Tele_2",
          "job":"SORM_BVT_Tele2_VOLTE_COLLECTION_MASS",
          "dvo":["CALLDIR","CW","HOLD","MPTY","SRVCC","CFU","CFX"],
-         "result":"SORM_BVT_Tele2_VOLTE_COLLECTION_MASS"
+         "result":"SORM_BVT_Tele2_VOLTE_COLLECTION_MASS",
+         "scenario":"Tele2/VOLTE"
 }
 
 sbertel={
          "provider":"SberTel",
          "job":"SORM_BVT_SberTel_VoWiFi_COLLECTION_MASS",
          "dvo":["CALLDIR","SMS","HOLD","3PTY","WAIT","CFU","CFB","CFNRY","CFNRC"],
-         "result":"SORM_BVT_SberTel_VoWiFi_COLLECTION_MASS"
+         "result":"SORM_BVT_SberTel_VoWiFi_COLLECTION_MASS",
+         "scenario":"SberTel/VoWiFi"
 }
 
 all_operators={
          "provider":"ALL_OPERATORS_IMS",
          "job":"SORM_HYBRID_REGRESSION_COLLECTION",
          "dvo":["Rostelecom","Beeline","MTS","Tele2","Sbertel","Megafon"],
-         "result":"SORM_HYBRID_REGRESSION_COLLECTION"
+         "result":"SORM_HYBRID_REGRESSION_COLLECTION",
+         "scenario":"All_operators_main_cases"
 }
 
 builds_to_diff={
 	     "provider":"Beeline",
-	     "builds":[347,344]
+	     "builds":build_num
 }
 
 operators=[beeline,mts,megafon,rtk,tele2,sbertel]
@@ -64,18 +71,10 @@ operators=[beeline,mts,megafon,rtk,tele2,sbertel]
 ##Get list of dictionary's with url list
 dict_with_url=get_url(operators)
 
-try:
-    # if os.path.exists("download"):
-    #     bash("rm -rf ./download")
-    # if not os.path.exists("report"):
-    #     os.mkdir("report")
-    # os.mkdir("download")
-    # download_from_url(dict_with_url, number_of_progons,wait)
-    timestr, length_dfs, total_df_len, diff_df_len, real_num_of_progons=merge_df_and_save_to_excel(dict_with_url, number_of_progons)
-    if NEED_FOR_USER_DIFF==True:
-        add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
-finally:
-    print("GOTOVO")
+# download_from_url(dict_with_url, number_of_progons,wait)
+timestr, length_dfs, total_df_len, diff_df_len, real_num_of_progons=merge_df_and_save_to_excel(dict_with_url, number_of_progons)
+if NEED_FOR_USER_DIFF==True:
+    add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 
 wb = openpyxl.load_workbook("report/"+timestr+".xlsx")    
 n=0
@@ -89,6 +88,8 @@ for operator in dict_with_url:
     end=colnum_string(real_num_of_progons+1)+str(length_dfs[n])
     set_border(ws, "A1:"+end)
     set_border(ws, "A"+str(length_dfs[n]-3)+":"+end,fill=True, color="95B3D7")
+
+    ###Оформляем дифф таблицу
     strt=colnum_string(real_num_of_progons+3)+"2"
     stop=colnum_string(real_num_of_progons+5)+str(current+2)
     fill=colnum_string(real_num_of_progons+3)+"3"+":"+colnum_string(real_num_of_progons+5)+"3"
@@ -96,9 +97,18 @@ for operator in dict_with_url:
     set_border(ws, strt+":"+stop)
     previous=diff_df_len[n]
     n+=1
+    ###Оформляем Таблицу версий
     fill=colnum_string(real_num_of_progons+3)+str(current+5)+":"+colnum_string(real_num_of_progons+5)+str(current+5)
     strt=colnum_string(real_num_of_progons+3)+str(current+4)
     stop=colnum_string(real_num_of_progons+5)+str(current+9)
+    set_border(ws, fill,fill=True, color="95B3D7")
+    set_border(ws, strt+":"+stop)
+    ###Оформляем Таблицу url
+    version_len=7
+    url_len=5
+    fill=colnum_string(real_num_of_progons+3)+str(current+5+version_len)+":"+colnum_string(real_num_of_progons+5)+str(current+5+version_len)
+    strt=colnum_string(real_num_of_progons+3)+str(current+4+version_len)
+    stop=colnum_string(real_num_of_progons+5)+str(current+9+url_len)
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 

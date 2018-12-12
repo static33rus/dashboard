@@ -25,30 +25,39 @@ def get_url(operators):
     return operators
 
 def download_from_url(url_list,num,sleep=3):
-    options = webdriver.ChromeOptions()
-    options.headless = True
-    # options.binary_location="/usr/bin/chromium-browser"
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(PATH+'/chromedriver',chrome_options=options)  # Optional argument, if not specified will search path.
-    driver.command_executor._commands["send_command"] = ("POST", '/session/$sessionId/chromium/send_command')
-    params = {'cmd': 'Page.setDownloadBehavior', 'params': {'behavior': 'allow', 'downloadPath': PATH+"/download/"}}
-    command_result = driver.execute("send_command", params)
-    for operator in url_list:
-        n=len(operator['url'])
-        for url in operator['url']:
-            newname="download/{}{}.csv".format(operator['provider'],str(n))
-            driver.get(url);
-            if num!=5:
-                search_box = driver.find_element_by_id("settingsmenubutton").click()
-                driver.find_element_by_id("noofbuilds").clear()
-                driver.find_element_by_id("noofbuilds").send_keys(str(num))
-                time.sleep(sleep)
-            search_box = driver.find_element_by_id('downloadCSV').click()
-            time.sleep(1)
-            os.rename('download/Test Results.csv', newname)
-            n-=1
-    time.sleep(2)
+    try:
+        if os.path.exists("download"):
+            bash("rm -rf ./download")
+        if not os.path.exists("report"):
+            os.mkdir("report")
+        os.mkdir("download")
+        download_from_url(dict_with_url, number_of_progons,wait)
+        options = webdriver.ChromeOptions()
+        options.headless = True
+        # options.binary_location="/usr/bin/chromium-browser"
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        driver = webdriver.Chrome(PATH+'/chromedriver',chrome_options=options)  # Optional argument, if not specified will search path.
+        driver.command_executor._commands["send_command"] = ("POST", '/session/$sessionId/chromium/send_command')
+        params = {'cmd': 'Page.setDownloadBehavior', 'params': {'behavior': 'allow', 'downloadPath': PATH+"/download/"}}
+        command_result = driver.execute("send_command", params)
+        for operator in url_list:
+            n=len(operator['url'])
+            for url in operator['url']:
+                newname="download/{}{}.csv".format(operator['provider'],str(n))
+                driver.get(url);
+                if num!=5:
+                    search_box = driver.find_element_by_id("settingsmenubutton").click()
+                    driver.find_element_by_id("noofbuilds").clear()
+                    driver.find_element_by_id("noofbuilds").send_keys(str(num))
+                    time.sleep(sleep)
+                search_box = driver.find_element_by_id('downloadCSV').click()
+                time.sleep(1)
+                os.rename('download/Test Results.csv', newname)
+                n-=1
+        time.sleep(2)
+    finally:
+    	print("Скачалось")
     return True
 
 def remove_rows_csv(df,num,word_list=["Esli eto slovo est v stroke, to stroka udalit'sya"]):
@@ -121,7 +130,9 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
 
         ###Собираем версии компонентов
         ver_df=get_version_df(operator,header)
+        url_df=get_url_df(operator,header)
         ver_df.to_excel(excel_writer, operator['provider'],startrow=len(diff_for_one_operator)+3 , startcol=real_num_of_progons+2,index=False)
+        url_df.to_excel(excel_writer, operator['provider'],startrow=len(diff_for_one_operator)+len(ver_df)+5 , startcol=real_num_of_progons+2,index=False)
 
         ###Считаем сколько passed,failed,skipped тестов и создаем отдельную таблицу        
         passed=countif_in_rows("PASSED",finaldf)
@@ -170,8 +181,8 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
         worksheet.set_column(0, 0, 25)
         worksheet.set_column(1, real_num_of_progons, 7)
         worksheet.set_column(real_num_of_progons+2, real_num_of_progons+2, width-15)
-        worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width-3)
-        worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width-3)
+        worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width+10)
+        worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width+10)
         worksheet.merge_range(colnum_string(real_num_of_progons+3)+'1:'+colnum_string(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
         worksheet.merge_range(colnum_string(real_num_of_progons+3)+str(len(diff_for_one_operator)+3)+':'+colnum_string(real_num_of_progons+5)+str(len(diff_for_one_operator)+3), 'Версии компонентов', merge_format)
         end=colnum_string(real_num_of_progons+1)+str(len(finaldf)+1)
@@ -394,8 +405,6 @@ def get_version_df(operator,header):
         ver_df=pd.DataFrame(columns=["component"])
         for id in header[1:3]:
             result_url="//10.72.1.239/Results/{job}/{id}".format(job=operator['result'],id=id)
-        # scenario_url="//10.72.1.239/Dumps/All_operators_main_cases/"
-        # allure_url="http://10.72.1.46/view/ALL_OPERATORS_IMS/job/SORM_HYBRID_REGRESSION_COLLECTION/{}/allure/".format(id_progona)
             if operator["provider"]=="ALL_OPERATORS_IMS":
                 bash("wget -P ./download/results ftp:"+ result_url+"/Beeline/result.tar.xz")
             else:
@@ -404,7 +413,7 @@ def get_version_df(operator,header):
             f=open("./download/results/versions.log","r")
             versions=f.read()
             f.close()  
-        
+
             keys=[]
             values=[]
             versions_list=versions.split("\n")
@@ -413,20 +422,26 @@ def get_version_df(operator,header):
                 values.append(item.split("/")[1])
             ver_df['component']=keys
             ver_df[id]=values
+
     except FileNotFoundError:
             keys=[" "]
-            values=["Нет информации, возможно тест упал в core или не запустился"]
+            values=["Нет информации, возможно тест не запустился"]
             ver_df['component']=keys
             ver_df[id]=values
     finally:
         bash("rm -rf download/results")            
     return ver_df
-
-            # bash('rm -rf ./download/xmlreports/')
         
-            # keys=['Логи и конфиги','Pcap+сценарий(ini)', 'Allure-report']
-            # values=[result_url,scenario_url,allure_url]
-            # url_df=pd.DataFrame(
-            #     	{' ': keys,
-            #     	 'url': values
-            #     	 })          
+def get_url_df(operator,header):
+    scenario_url="//10.72.1.239/Dumps/{}/".format(operator['scenario'])
+    result_url="//10.72.1.239/Results/{job}/{id}".format(job=operator['result'],id=header[1])
+    allure_url="http://10.72.1.46/view/{operator}/job/{job}/{id}/allure/".format(operator=operator['provider'],job=operator['job'],id=header[1])
+
+    keys=['Логи и конфиги','Pcap+сценарий(ini)', 'Allure-report']
+    values=[result_url,scenario_url,allure_url]
+
+    url_df=pd.DataFrame(
+                {' ': keys,
+                 'url': values
+                	 })
+    return url_df
