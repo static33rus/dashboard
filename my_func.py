@@ -4,6 +4,7 @@ from selenium import webdriver
 import pandas as pd
 import xlsxwriter
 import openpyxl
+from bash import bash
 from openpyxl.styles import Font, Border, Side, Style, Color, PatternFill, Alignment
 from openpyxl.utils import coordinate_from_string
 
@@ -118,6 +119,10 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
         diff_table=diff_table.append(diff_for_one_operator)
         diff_tables_len.append(len(diff_table))
 
+        ###Собираем версии компонентов
+        ver_df=get_version_df(operator,header)
+        ver_df.to_excel(excel_writer, operator['provider'],startrow=len(diff_for_one_operator)+3 , startcol=real_num_of_progons+2,index=False)
+
         ###Считаем сколько passed,failed,skipped тестов и создаем отдельную таблицу        
         passed=countif_in_rows("PASSED",finaldf)
         failed=countif_in_rows("FAILED",finaldf)
@@ -166,9 +171,9 @@ def merge_df_and_save_to_excel(dict_with_url, number_of_progons):
         worksheet.set_column(1, real_num_of_progons, 7)
         worksheet.set_column(real_num_of_progons+2, real_num_of_progons+2, width-15)
         worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width-3)
-        worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width-15)
+        worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width-3)
         worksheet.merge_range(colnum_string(real_num_of_progons+3)+'1:'+colnum_string(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
-
+        worksheet.merge_range(colnum_string(real_num_of_progons+3)+str(len(diff_for_one_operator)+3)+':'+colnum_string(real_num_of_progons+5)+str(len(diff_for_one_operator)+3), 'Версии компонентов', merge_format)
         end=colnum_string(real_num_of_progons+1)+str(len(finaldf)+1)
         worksheet.conditional_format('B2:'+end, {'type':     'cell',
                                                  'criteria': '==',
@@ -375,3 +380,53 @@ def append_df_to_excel(filename, df, startcol, sheet_name='Sheet1', descr=None,
     set_border(writer.book[sheet_name], colnum_string(startcol+1)+str(startrow+3)+":"+colnum_string(startcol+3)+str(startrow+3+len(df)))
     # save the workbook
     writer.save()
+
+def add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons):
+    df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
+    user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
+    if not user_diff_table.empty:
+        descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
+        append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
+
+def get_version_df(operator,header):
+    try:
+        os.mkdir("download/results")
+        ver_df=pd.DataFrame(columns=["component"])
+        for id in header[1:3]:
+            result_url="//10.72.1.239/Results/{job}/{id}".format(job=operator['result'],id=id)
+        # scenario_url="//10.72.1.239/Dumps/All_operators_main_cases/"
+        # allure_url="http://10.72.1.46/view/ALL_OPERATORS_IMS/job/SORM_HYBRID_REGRESSION_COLLECTION/{}/allure/".format(id_progona)
+            if operator["provider"]=="ALL_OPERATORS_IMS":
+                bash("wget -P ./download/results ftp:"+ result_url+"/Beeline/result.tar.xz")
+            else:
+                bash("wget -P ./download/results ftp:"+ result_url+"/CALLDIR/result.tar.xz")
+            bash("tar xf ./download/results/result.tar.xz -C ./download/results/")
+            f=open("./download/results/versions.log","r")
+            versions=f.read()
+            f.close()  
+        
+            keys=[]
+            values=[]
+            versions_list=versions.split("\n")
+            for item in versions_list[:-1]:
+                keys.append(item.split("/")[0])
+                values.append(item.split("/")[1])
+            ver_df['component']=keys
+            ver_df[id]=values
+    except FileNotFoundError:
+            keys=[" "]
+            values=["Нет информации, возможно тест упал в core или не запустился"]
+            ver_df['component']=keys
+            ver_df[id]=values
+    finally:
+        bash("rm -rf download/results")            
+    return ver_df
+
+            # bash('rm -rf ./download/xmlreports/')
+        
+            # keys=['Логи и конфиги','Pcap+сценарий(ini)', 'Allure-report']
+            # values=[result_url,scenario_url,allure_url]
+            # url_df=pd.DataFrame(
+            #     	{' ': keys,
+            #     	 'url': values
+            #     	 })          

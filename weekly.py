@@ -1,50 +1,56 @@
 from my_func import *
-from bash import bash
 from openpyxl import load_workbook
 
 number_of_progons=5
 wait=3
-NEED_FOR_USER_DIFF=False
+NEED_FOR_USER_DIFF=True
 
 beeline={
          "provider":"Beeline",
 		 "job":"Beeline_BVT",
-		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"]
+		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
+		 "result":"Beeline_BVT_NEW"
 }
 mts={
          "provider":"MTS",
 		 "job":"MTS_MSK_VOLTE",
-		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"]
+		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
+         "result":"MTS_MSK_VOLTE_COLLECTION"
 }
 
 megafon={
          "provider":"Megafon",
 		 "job":"Megafon_IMS_MSK",
-		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"]
+		 "dvo":["CALLDIR","WAIT","HOLD","3PTY","SRVCC","CFU","CFX"],
+         "result":"SORM_BVT_Megafon_VoLTE_COLLECTION_MASS_DEVELOP"
 }
 
 rtk={
          "provider":"RTK",
          "job":"SORM_BVT_RTK_NSK_IMS_COLLECTION_MASS",
-         "dvo":["CALLDIR","WAIT","HOLD","3PTY","CFU","CFB","CFNRY","ACT_DVO","NEW_DVO","CLIR"]
+         "dvo":["CALLDIR","WAIT","HOLD","3PTY","CFU","CFB","CFNRY","ACT_DVO","NEW_DVO","CLIR"],
+         "result":"SORM_BVT_RTK_NSK_IMS_COLLECTION_MAS"
 }
 
 tele2={
          "provider":"Tele_2",
          "job":"SORM_BVT_Tele2_VOLTE_COLLECTION_MASS",
-         "dvo":["CALLDIR","CW","HOLD","MPTY","SRVCC","CFU","CFX"]
+         "dvo":["CALLDIR","CW","HOLD","MPTY","SRVCC","CFU","CFX"],
+         "result":"SORM_BVT_Tele2_VOLTE_COLLECTION_MASS"
 }
 
 sbertel={
          "provider":"SberTel",
          "job":"SORM_BVT_SberTel_VoWiFi_COLLECTION_MASS",
-         "dvo":["CALLDIR","SMS","HOLD","3PTY","WAIT","CFU","CFB","CFNRY","CFNRC"]
+         "dvo":["CALLDIR","SMS","HOLD","3PTY","WAIT","CFU","CFB","CFNRY","CFNRC"],
+         "result":"SORM_BVT_SberTel_VoWiFi_COLLECTION_MASS"
 }
 
 all_operators={
          "provider":"ALL_OPERATORS_IMS",
          "job":"SORM_HYBRID_REGRESSION_COLLECTION",
-         "dvo":["Rostelecom","Beeline","MTS","Tele2","Sbertel","Megafon"]
+         "dvo":["Rostelecom","Beeline","MTS","Tele2","Sbertel","Megafon"],
+         "result":"SORM_HYBRID_REGRESSION_COLLECTION"
 }
 
 builds_to_diff={
@@ -67,11 +73,7 @@ try:
     # download_from_url(dict_with_url, number_of_progons,wait)
     timestr, length_dfs, total_df_len, diff_df_len, real_num_of_progons=merge_df_and_save_to_excel(dict_with_url, number_of_progons)
     if NEED_FOR_USER_DIFF==True:
-        df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
-        user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
-        if not user_diff_table.empty:
-            descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
-            append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
+        add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 finally:
     print("GOTOVO")
 
@@ -94,6 +96,11 @@ for operator in dict_with_url:
     set_border(ws, strt+":"+stop)
     previous=diff_df_len[n]
     n+=1
+    fill=colnum_string(real_num_of_progons+3)+str(current+5)+":"+colnum_string(real_num_of_progons+5)+str(current+5)
+    strt=colnum_string(real_num_of_progons+3)+str(current+4)
+    stop=colnum_string(real_num_of_progons+5)+str(current+9)
+    set_border(ws, fill,fill=True, color="95B3D7")
+    set_border(ws, strt+":"+stop)
 
 ws = wb["SUMMARY"]
 ###Форматируем total таблицу по текущему прогону

@@ -17,6 +17,7 @@ try:
     download_from_url(url_list, 'downloadCSV')
 
 ##Working with csv    
+    PATH=os.getcwd()
     fout=open("report/out.csv","w")
     # first file:
     for line in open("download/Test Results (1).csv"):
@@ -50,6 +51,7 @@ try:
             f["Test"][i]=" " 
     df = f[keep_col]
     df = remove_rows_csv(df)
+    df=df.fillna('').groupby('Test',as_index=False).agg('sum')
     df.to_csv("tmp.csv", index=False)
 
     diff=diff_table("tmp.csv")
@@ -182,14 +184,12 @@ try:
     subj = "Ежедневный отчет по автотестам"
     body = "Доброе утро, отчет во вложении\n"
     filename = timestr+".xlsx"
-    att_path = "/home/m_pavlov/Desktop/allure-report/report/"+filename
+    att_path = PATH+"/report/"+filename
     sendmail(fromaddr,toaddr,subj,body,filename,att_path)   
 
 finally:
-    # print("x")
-    os.remove("report/out.csv")
-    os.remove("tmp.csv")
-    bash("rm -rf ./download")
-
-
+    print("ready")
+    # os.remove("report/out.csv")
+    # os.remove("tmp.csv")
+    # bash("rm -rf ./download")
 
