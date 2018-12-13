@@ -2,7 +2,9 @@ from my_func import *
 from openpyxl import load_workbook
 
 number_of_progons=5
+##Секция, описывающая параметры для diff таблицы по запросу пользователя
 NEED_FOR_USER_DIFF=True
+OPER="Beeline"
 build_num=[348,347]
 
 beeline={
@@ -61,16 +63,16 @@ all_operators={
 }
 
 builds_to_diff={
-	     "provider":"Beeline",
+	     "provider":OPER,
 	     "builds":build_num
 }
 
-operators=[beeline,mts,megafon,rtk,tele2,sbertel]
-# operators=[all_operators]
+# operators=[beeline,mts,megafon,rtk,tele2,sbertel]
+operators=[all_operators]
 
 ##Get list of dictionary's with url list
 dict_with_url=get_url(operators)
-# download_from_url(dict_with_url, number_of_progons)
+download_from_url(dict_with_url, number_of_progons)
 
 total_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])
 total_previous_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])

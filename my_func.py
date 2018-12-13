@@ -59,7 +59,6 @@ def download_from_url(url_list,num,sleep=3):
         if not os.path.exists("report"):
             os.mkdir("report")
         os.mkdir("download")
-        download_from_url(dict_with_url, number_of_progons,wait)
         options = webdriver.ChromeOptions()
         options.headless = True
         # options.binary_location="/usr/bin/chromium-browser"
@@ -299,12 +298,15 @@ def append_df_to_excel(filename, df, startcol, sheet_name='Sheet1', descr=None,
     writer.save()
 
 def add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons):
-    df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
-    user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
-    if not user_diff_table.empty:
-        descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
-        append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
-
+    try:
+        df=pd.read_csv("download/"+builds_to_diff['provider']+".csv")
+        user_diff_table=create_diff_table(df,builds_to_diff['provider'],builds_to_diff=builds_to_diff['builds'])
+        if not user_diff_table.empty:
+            descr="Таблица сравнения сборок {} и {}".format(builds_to_diff['builds'][0],builds_to_diff['builds'][1])
+            append_df_to_excel("report/"+timestr+".xlsx", user_diff_table, startcol=real_num_of_progons+2, sheet_name=builds_to_diff['provider'],descr=descr, index=False)
+    except FileNotFoundError:
+        print("Скорее всего неправильный builds_to_diff, таблицы сравнения указанных версий в отчете не будет")
+        return None
 def get_version_df(operator,header):
     try:
         os.mkdir("download/results")
