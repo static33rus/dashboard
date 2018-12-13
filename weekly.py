@@ -70,60 +70,149 @@ operators=[beeline,mts,megafon,rtk,tele2,sbertel]
 
 ##Get list of dictionary's with url list
 dict_with_url=get_url(operators)
+# download_from_url(dict_with_url, number_of_progons)
 
-# download_from_url(dict_with_url, number_of_progons,wait)
-timestr, length_dfs, total_df_len, diff_df_len, real_num_of_progons=merge_df_and_save_to_excel(dict_with_url, number_of_progons)
+total_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])
+total_previous_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])
+diff_table=pd.DataFrame(columns=['Стали работать','Перестали работать','Перестали запускаться'])
+total_passed,total_failed,total_skipped=0,0,0
+previous_passed,previous_failed,previous_skipped=0,0,0
+excel_writer,timestr=merge_df_and_save_to_csv(dict_with_url, number_of_progons)
+# excel_writer = pd.ExcelWriter("report/"+timestr+".xlsx", engine='xlsxwriter')
+workbook  = excel_writer.book
+red = workbook.add_format({'bg_color': '#FFC7CE',
+                           'font_color': '#9C0006'})
+green = workbook.add_format({'bg_color': '#81F781',
+                               'font_color': '#9C0006'})
+yellow = workbook.add_format({'bg_color': '#FFFF00',
+                               'font_color': '#9C0006'})
+header_format = workbook.add_format({
+                             'bold': True,
+                             'text_wrap': True,
+                             'valign': 'top',
+                             'fg_color': '#DDD9C4',
+                             'border': 1})
+merge_format = workbook.add_format({'align': 'center','bold':     True,'font_color': '#FF0000'})
+width = 40
+for operator in dict_with_url:    
+    finaldf=rename_test_column("download/"+operator['provider']+".csv")
+    finaldf = finaldf.sort_index(ascending=False, axis=1)
+    header=list(finaldf.columns)
+    real_num_of_progons=(len(list(finaldf.head(0))))-1
+    diff_for_one_operator=create_diff_table(finaldf,operator['provider'], include_provider_name=True)
+    diff_table=diff_table.append(diff_for_one_operator)
+    finaldf,passed,failed,skipped =add_summary_to_df(finaldf)
+    total_passed,total_failed,total_skipped=total_passed+passed[1],total_failed+failed[1],total_skipped+skipped[1]
+    previous_passed,previous_failed,previous_skipped=previous_passed+passed[2],previous_failed+failed[2],previous_skipped+skipped[2]
+    total_df=total_df.append(pd.DataFrame({
+                                  ' ': operator['provider'],
+                                  'PASSED': passed[1],
+                                  'FAILED': failed[1],
+                                  'SKIPPED': skipped[1]}, index=[0]), sort=False)
+    total_previous_df=total_previous_df.append(pd.DataFrame({
+                                  ' ': operator['provider'],
+                                  'PASSED': passed[2],
+                                  'FAILED': failed[2],
+                                  'SKIPPED': skipped[2]}, index=[0]), sort=False)
+    ver_df=get_version_df(operator,header)
+    url_df=get_url_df(operator,header)
+
+    finaldf.to_excel(excel_writer, sheet_name=operator['provider'],index=False)
+    diff_for_one_operator.to_excel(excel_writer, operator['provider'],startrow=1 , startcol=real_num_of_progons+2,index=False) 
+    ver_df.to_excel(excel_writer, operator['provider'],startrow=len(diff_for_one_operator)+3 , startcol=real_num_of_progons+2,index=False)
+    url_df.to_excel(excel_writer, operator['provider'],startrow=len(diff_for_one_operator)+len(ver_df)+5 , startcol=real_num_of_progons+2,index=False)
+    worksheet = excel_writer.sheets[operator['provider']]
+    worksheet.set_column(0, 0, 25)
+    worksheet.set_column(1, real_num_of_progons, 7)
+    worksheet.set_column(real_num_of_progons+2, real_num_of_progons+2, width-15)
+    worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width+10)
+    worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width+10)
+    worksheet.merge_range(colnum_string(real_num_of_progons+3)+'1:'+colnum_string(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
+    worksheet.merge_range(colnum_string(real_num_of_progons+3)+str(len(diff_for_one_operator)+3)+':'+colnum_string(real_num_of_progons+5)+str(len(diff_for_one_operator)+3), 'Версии компонентов', merge_format)
+    end=colnum_string(real_num_of_progons+1)+str(len(finaldf)+1)
+    worksheet.conditional_format('B2:'+end, {'type':     'cell',
+                                             'criteria': '==',
+                                             'value':    '"FAILED"',
+                                             'format':   red})
+    
+    
+    worksheet.conditional_format('B2:'+end, {'type':     'cell',
+                                             'criteria': '==',
+                                             'value':    '"PASSED"',
+                                             'format':   green})
+
+    worksheet.conditional_format('B2:'+end, {'type':     'cell',
+                                             'criteria': '==',
+                                             'value':    '"SKIPPED"',
+                                             'format':   yellow})
+
+    operator['finaldf_len']=len(finaldf)+1
+    operator['diff_len']=len(diff_for_one_operator)+1
+    operator['ver_len']=len(ver_df)+1
+    operator['url_len']=len(url_df)+1
+
+total_df.loc[len(total_df)]=["Всего: ",total_passed,total_failed,total_skipped]
+total_previous_df.loc[len(total_df)]=["Всего: ",previous_passed,previous_failed,previous_skipped]
+total_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=1,index=False)
+total_previous_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=len(total_df)+4,index=False)
+diff_table.to_excel(excel_writer, 'SUMMARY',startrow=1 , startcol=5,index=False)
+###Форматирование summary страницы
+worksheet2 = excel_writer.sheets["SUMMARY"]   
+worksheet2.merge_range('A1:D1', 'Cтатистика по последнему прогону', merge_format)
+worksheet2.merge_range('F1:H1', 'Таблица сравнения между последней и предпоследней сборками', merge_format)
+worksheet2.merge_range('A'+str(len(total_df)+4)+':D'+str(len(total_df)+4), 'Cтатистика по предыдущему прогону', merge_format)
+worksheet2.set_column(5, 5, width-15)
+worksheet2.set_column(6, 6, width-3)
+worksheet2.set_column(7, 7, width-15)
+worksheet2.set_column(0, 3, 22)
+excel_writer.save()
+
 if NEED_FOR_USER_DIFF==True:
     add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 
 wb = openpyxl.load_workbook("report/"+timestr+".xlsx")    
 n=0
-previous=0
 for operator in dict_with_url:
-    current=diff_df_len[n]-previous
     ws = wb[operator['provider']]
     if real_num_of_progons>number_of_progons:
         print("Скорее всего сейчас проходит очередной прогон или один из прогонов не завершился успешно")
-    # end=colnum_string(number_of_progons+1)+str(length_dfs[n])
-    end=colnum_string(real_num_of_progons+1)+str(length_dfs[n])
+    # end=colnum_string(number_of_progons+1)+str(operator['finaldf_len'])
+    end=colnum_string(real_num_of_progons+1)+str(operator['finaldf_len'])
     set_border(ws, "A1:"+end)
-    set_border(ws, "A"+str(length_dfs[n]-3)+":"+end,fill=True, color="95B3D7")
+    set_border(ws, "A"+str(operator['finaldf_len']-3)+":"+end,fill=True, color="95B3D7")
 
     ###Оформляем дифф таблицу
     strt=colnum_string(real_num_of_progons+3)+"2"
-    stop=colnum_string(real_num_of_progons+5)+str(current+2)
+    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+1)
     fill=colnum_string(real_num_of_progons+3)+"3"+":"+colnum_string(real_num_of_progons+5)+"3"
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
-    previous=diff_df_len[n]
+
     n+=1
     ###Оформляем Таблицу версий
-    fill=colnum_string(real_num_of_progons+3)+str(current+5)+":"+colnum_string(real_num_of_progons+5)+str(current+5)
-    strt=colnum_string(real_num_of_progons+3)+str(current+4)
-    stop=colnum_string(real_num_of_progons+5)+str(current+9)
-    set_border(ws, fill,fill=True, color="95B3D7")
+    strt=colnum_string(real_num_of_progons+3)+str(operator['diff_len']+3)
+    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+2+operator['ver_len'])
     set_border(ws, strt+":"+stop)
     ###Оформляем Таблицу url
-    version_len=7
-    url_len=5
-    fill=colnum_string(real_num_of_progons+3)+str(current+5+version_len)+":"+colnum_string(real_num_of_progons+5)+str(current+5+version_len)
-    strt=colnum_string(real_num_of_progons+3)+str(current+4+version_len)
-    stop=colnum_string(real_num_of_progons+5)+str(current+9+url_len)
+    strt=colnum_string(real_num_of_progons+3)+str(operator['diff_len']+4+operator['ver_len'])
+    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+3+operator['url_len']+operator['ver_len'])
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 
 ws = wb["SUMMARY"]
 ###Форматируем total таблицу по текущему прогону
-end=colnum_string(4)+str(total_df_len)
+end=colnum_string(4)+str(len(total_df)+1)
 set_border(ws, "A2:"+end)
-set_border(ws, "A"+str(total_df_len+1)+":D"+str(total_df_len+1),fill=True, color="95B3D7")
+set_border(ws, "A"+str(len(total_df)+2)+":D"+str(len(total_df)+2),fill=True, color="95B3D7")
 ###Форматируем total таблицу по предыдущему прогону
-set_border(ws, 'A'+str(total_df_len+4)+':D'+str(total_df_len*2+3))
-set_border(ws, "A"+str(total_df_len*2+3)+":D"+str(total_df_len*2+3),fill=True, color="95B3D7")
+set_border(ws, 'A'+str(len(total_df)+5)+':D'+str(len(total_df)*2+5))
+set_border(ws, "A"+str(len(total_df)*2+5)+":D"+str(len(total_df)*2+5),fill=True, color="95B3D7")
 ###Форматируем total_diff таблицу
-set_border(ws, "F3:H3",fill=True, color="95B3D7")
-for item in diff_df_len[:-1]:
-    set_border(ws, "F"+str(3+item)+":H"+str(3+item),fill=True, color="95B3D7")
-set_border(ws, "F2:"+"H"+str(diff_df_len[-1]+2))
+# set_border(ws, "F3:H3",fill=True, color="95B3D7")
+diff_len=3
+for item in dict_with_url:
+    set_border(ws, "F"+str(diff_len)+":H"+str(diff_len),fill=True, color="95B3D7")
+    diff_len=diff_len+item['diff_len']-1
+set_border(ws, "F2:"+"H"+str(len(diff_table)+2))
 wb.save("report/"+timestr+".xlsx")
 
