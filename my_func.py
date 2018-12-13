@@ -108,7 +108,7 @@ def remove_rows_csv(df,num,word_list=["Esli eto slovo est v stroke, to stroka ud
     df1=df.drop(x, axis=0)
     return df1
 
-def colnum_string(n):
+def num_to_letter(n):
     ###Example of this function: input=6, output=F
     string = ""
     while n > 0:
@@ -264,9 +264,9 @@ def append_df_to_excel(filename, df, startcol, sheet_name='Sheet1', descr=None,
         # if startrow is None and sheet_name in writer.book.sheetnames:
         #     startrow = writer.book[sheet_name].max_row
 
-        startrow=max(get_maximum_row(writer.book[sheet_name],colnum_string(startcol+1)),
-                     get_maximum_row(writer.book[sheet_name],colnum_string(startcol+2)),
-                     get_maximum_row(writer.book[sheet_name],colnum_string(startcol+3)))
+        startrow=max(get_maximum_row(writer.book[sheet_name],num_to_letter(startcol+1)),
+                     get_maximum_row(writer.book[sheet_name],num_to_letter(startcol+2)),
+                     get_maximum_row(writer.book[sheet_name],num_to_letter(startcol+3)))
 
         # truncate sheet
         if truncate_sheet and sheet_name in writer.book.sheetnames:
@@ -289,11 +289,11 @@ def append_df_to_excel(filename, df, startcol, sheet_name='Sheet1', descr=None,
     # write out the new sheet
     df.to_excel(writer, sheet_name, startrow=startrow+2, startcol=startcol, **to_excel_kwargs)
     if descr!=None:
-        writer.book[sheet_name].merge_cells(colnum_string(startcol+1)+str(startrow+2)+":"+colnum_string(startcol+3)+str(startrow+2))
-        writer.book[sheet_name][colnum_string(startcol+1)+str(startrow+2)]=descr
-        writer.book[sheet_name].cell(colnum_string(startcol+1)+str(startrow+2)).alignment = Alignment(horizontal='center')
-        writer.book[sheet_name].cell(colnum_string(startcol+1)+str(startrow+2)).font = Font(color="FF0000", bold=True)
-    set_border(writer.book[sheet_name], colnum_string(startcol+1)+str(startrow+3)+":"+colnum_string(startcol+3)+str(startrow+3+len(df)))
+        writer.book[sheet_name].merge_cells(num_to_letter(startcol+1)+str(startrow+2)+":"+num_to_letter(startcol+3)+str(startrow+2))
+        writer.book[sheet_name][num_to_letter(startcol+1)+str(startrow+2)]=descr
+        writer.book[sheet_name].cell(num_to_letter(startcol+1)+str(startrow+2)).alignment = Alignment(horizontal='center')
+        writer.book[sheet_name].cell(num_to_letter(startcol+1)+str(startrow+2)).font = Font(color="FF0000", bold=True)
+    set_border(writer.book[sheet_name], num_to_letter(startcol+1)+str(startrow+3)+":"+num_to_letter(startcol+3)+str(startrow+3+len(df)))
     # save the workbook
     writer.save()
 

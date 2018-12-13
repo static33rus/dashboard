@@ -129,9 +129,10 @@ for operator in dict_with_url:
     worksheet.set_column(real_num_of_progons+2, real_num_of_progons+2, width-15)
     worksheet.set_column(real_num_of_progons+3, real_num_of_progons+3, width+10)
     worksheet.set_column(real_num_of_progons+4, real_num_of_progons+4, width+10)
-    worksheet.merge_range(colnum_string(real_num_of_progons+3)+'1:'+colnum_string(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
-    worksheet.merge_range(colnum_string(real_num_of_progons+3)+str(len(diff_for_one_operator)+3)+':'+colnum_string(real_num_of_progons+5)+str(len(diff_for_one_operator)+3), 'Версии компонентов', merge_format)
-    end=colnum_string(real_num_of_progons+1)+str(len(finaldf)+1)
+    worksheet.merge_range(num_to_letter(real_num_of_progons+3)+'1:'+num_to_letter(real_num_of_progons+5)+'1', 'Сравнение последнего и предпоследнего прогона', merge_format)
+    worksheet.merge_range(num_to_letter(real_num_of_progons+3)+str(len(diff_for_one_operator)+3)+':'+num_to_letter(real_num_of_progons+5)+str(len(diff_for_one_operator)+3), 'Версии компонентов', merge_format)
+    worksheet.merge_range(num_to_letter(real_num_of_progons+3)+str(len(diff_for_one_operator)+len(ver_df)+5)+':'+num_to_letter(real_num_of_progons+5)+str(len(diff_for_one_operator)+5+len(ver_df)), 'Таблица с сылками на результаты', merge_format)
+    end=num_to_letter(real_num_of_progons+1)+str(len(finaldf)+1)
     worksheet.conditional_format('B2:'+end, {'type':     'cell',
                                              'criteria': '==',
                                              'value':    '"FAILED"',
@@ -172,38 +173,37 @@ excel_writer.save()
 if NEED_FOR_USER_DIFF==True:
     add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 
+###Форматирование получившегося excel: создание границы таблицы и подсветка шапки
 wb = openpyxl.load_workbook("report/"+timestr+".xlsx")    
-n=0
+
 for operator in dict_with_url:
     ws = wb[operator['provider']]
     if real_num_of_progons>number_of_progons:
         print("Скорее всего сейчас проходит очередной прогон или один из прогонов не завершился успешно")
-    # end=colnum_string(number_of_progons+1)+str(operator['finaldf_len'])
-    end=colnum_string(real_num_of_progons+1)+str(operator['finaldf_len'])
+    end=num_to_letter(real_num_of_progons+1)+str(operator['finaldf_len'])
     set_border(ws, "A1:"+end)
     set_border(ws, "A"+str(operator['finaldf_len']-3)+":"+end,fill=True, color="95B3D7")
 
     ###Оформляем дифф таблицу
-    strt=colnum_string(real_num_of_progons+3)+"2"
-    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+1)
-    fill=colnum_string(real_num_of_progons+3)+"3"+":"+colnum_string(real_num_of_progons+5)+"3"
+    strt=num_to_letter(real_num_of_progons+3)+"2"
+    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+1)
+    fill=num_to_letter(real_num_of_progons+3)+"3"+":"+num_to_letter(real_num_of_progons+5)+"3"
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 
-    n+=1
     ###Оформляем Таблицу версий
-    strt=colnum_string(real_num_of_progons+3)+str(operator['diff_len']+3)
-    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+2+operator['ver_len'])
+    strt=num_to_letter(real_num_of_progons+3)+str(operator['diff_len']+3)
+    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+2+operator['ver_len'])
     set_border(ws, strt+":"+stop)
     ###Оформляем Таблицу url
-    strt=colnum_string(real_num_of_progons+3)+str(operator['diff_len']+4+operator['ver_len'])
-    stop=colnum_string(real_num_of_progons+5)+str(operator['diff_len']+3+operator['url_len']+operator['ver_len'])
+    strt=num_to_letter(real_num_of_progons+3)+str(operator['diff_len']+4+operator['ver_len'])
+    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+3+operator['url_len']+operator['ver_len'])
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 
 ws = wb["SUMMARY"]
 ###Форматируем total таблицу по текущему прогону
-end=colnum_string(4)+str(len(total_df)+1)
+end=num_to_letter(4)+str(len(total_df)+1)
 set_border(ws, "A2:"+end)
 set_border(ws, "A"+str(len(total_df)+2)+":D"+str(len(total_df)+2),fill=True, color="95B3D7")
 ###Форматируем total таблицу по предыдущему прогону
