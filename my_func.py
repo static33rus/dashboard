@@ -1,9 +1,14 @@
 import os
+import smtplib
 import time
 from selenium import webdriver
 import pandas as pd
 import xlsxwriter
 import openpyxl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from bash import bash
 from openpyxl.styles import Font, Border, Side, Style, Color, PatternFill, Alignment
 from openpyxl.utils import coordinate_from_string
@@ -380,4 +385,27 @@ def get_skipped_df(url_with_dict):
          'Reason of FAIL': values
         })
     return skipped_df
+
+def sendmail(fromaddr,toaddr,subj,body,filename,att_path):   
+    msg = MIMEMultipart()
+     
+    msg['From'] = fromaddr
+    msg['To'] = toaddr
+    msg['Subject'] = subj
+     
+    msg.attach(MIMEText(body, 'plain'))
+    attachment = open(att_path, "rb")
+     
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload((attachment).read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', "attachment; filename= %s" % filename)
+     
+    msg.attach(part)
+     
+    server = smtplib.SMTP('10.72.1.210:25')
+    server.starttls()
+    text = msg.as_string()
+    server.sendmail(fromaddr, toaddr, text)
+    server.quit()
 

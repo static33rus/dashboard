@@ -2,8 +2,9 @@ from my_func import *
 from openpyxl import load_workbook
 
 number_of_progons=5
+SEND_MAIL=True
 ##Секция, описывающая параметры для diff таблицы по запросу пользователя
-NEED_FOR_USER_DIFF=True
+NEED_FOR_USER_DIFF=False
 OPER="Beeline"
 build_num=[348,347]
 
@@ -229,4 +230,14 @@ set_border(ws, "F2:"+"H"+str(len(diff_table)+2))
 ws = wb["Skipped tests"]
 set_border(ws, "A1:"+"B"+str(len(skipped_df)+1))
 wb.save("report/"+timestr+".xlsx")
+
+
+if SEND_MAIL==True:
+    fromaddr = "jenkins@osnovalab.ru"
+    toaddr = "m.pavlov@osnovalab.ru"
+    subj = "Ежедневный отчет по автотестам"
+    body = "Доброе утро, отчет во вложении\n"
+    filename = timestr+".xlsx"
+    att_path = PATH+"/report/"+filename
+    sendmail(fromaddr,toaddr,subj,body,filename,att_path)   
 
