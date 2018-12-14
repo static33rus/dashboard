@@ -154,13 +154,17 @@ for operator in dict_with_url:
     operator['ver_len']=len(ver_df)+1
     operator['url_len']=len(url_df)+1
 
+skipped_df=get_skipped_df(dict_with_url)
 total_df.loc[len(total_df)]=["Всего: ",total_passed,total_failed,total_skipped]
 total_previous_df.loc[len(total_df)]=["Всего: ",previous_passed,previous_failed,previous_skipped]
 total_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=1,index=False)
 total_previous_df.to_excel(excel_writer, sheet_name="SUMMARY",startrow=len(total_df)+4,index=False)
 diff_table.to_excel(excel_writer, 'SUMMARY',startrow=1 , startcol=5,index=False)
+skipped_df.to_excel(excel_writer, 'Skipped tests',startrow=0 , startcol=0,index=False)
 ###Форматирование summary страницы
-worksheet2 = excel_writer.sheets["SUMMARY"]   
+worksheet2 = excel_writer.sheets["SUMMARY"] 
+worksheet3 = excel_writer.sheets["Skipped tests"]
+
 worksheet2.merge_range('A1:D1', 'Cтатистика по последнему прогону', merge_format)
 worksheet2.merge_range('F1:H1', 'Таблица сравнения между последней и предпоследней сборками', merge_format)
 worksheet2.merge_range('A'+str(len(total_df)+4)+':D'+str(len(total_df)+4), 'Cтатистика по предыдущему прогону', merge_format)
@@ -168,36 +172,40 @@ worksheet2.set_column(5, 5, width-15)
 worksheet2.set_column(6, 6, width-3)
 worksheet2.set_column(7, 7, width-15)
 worksheet2.set_column(0, 3, 22)
+worksheet3.set_column(0, 2, width*2)
 excel_writer.save()
 
 if NEED_FOR_USER_DIFF==True:
     add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 
 ###Форматирование получившегося excel: создание границы таблицы и подсветка шапки
-wb = openpyxl.load_workbook("report/"+timestr+".xlsx")    
+width1=real_num_of_progons+1 #Ширина первой таблицы
+width2=3 #Ширина второй табицы
+empty=1  #Количество колонок между таблицами
 
+wb = openpyxl.load_workbook("report/"+timestr+".xlsx")
 for operator in dict_with_url:
     ws = wb[operator['provider']]
     if real_num_of_progons>number_of_progons:
         print("Скорее всего сейчас проходит очередной прогон или один из прогонов не завершился успешно")
-    end=num_to_letter(real_num_of_progons+1)+str(operator['finaldf_len'])
+    end=num_to_letter(width1)+str(operator['finaldf_len'])
     set_border(ws, "A1:"+end)
     set_border(ws, "A"+str(operator['finaldf_len']-3)+":"+end,fill=True, color="95B3D7")
 
     ###Оформляем дифф таблицу
-    strt=num_to_letter(real_num_of_progons+3)+"2"
-    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+1)
-    fill=num_to_letter(real_num_of_progons+3)+"3"+":"+num_to_letter(real_num_of_progons+5)+"3"
+    strt=num_to_letter(width1+empty+1)+"2"
+    stop=num_to_letter(width1+empty+width2)+str(operator['diff_len']+1)
+    fill=num_to_letter(width1+empty+1)+"3"+":"+num_to_letter(width1+empty+width2)+"3"
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 
     ###Оформляем Таблицу версий
-    strt=num_to_letter(real_num_of_progons+3)+str(operator['diff_len']+3)
-    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+2+operator['ver_len'])
+    strt=num_to_letter(width1+empty+1)+str(operator['diff_len']+3)
+    stop=num_to_letter(width1+empty+width2)+str(operator['diff_len']+2+operator['ver_len'])
     set_border(ws, strt+":"+stop)
     ###Оформляем Таблицу url
-    strt=num_to_letter(real_num_of_progons+3)+str(operator['diff_len']+4+operator['ver_len'])
-    stop=num_to_letter(real_num_of_progons+5)+str(operator['diff_len']+3+operator['url_len']+operator['ver_len'])
+    strt=num_to_letter(width1+empty+1)+str(operator['diff_len']+4+operator['ver_len'])
+    stop=num_to_letter(width1+empty+width2)+str(operator['diff_len']+3+operator['url_len']+operator['ver_len'])
     set_border(ws, fill,fill=True, color="95B3D7")
     set_border(ws, strt+":"+stop)
 
@@ -216,5 +224,9 @@ for item in dict_with_url:
     set_border(ws, "F"+str(diff_len)+":H"+str(diff_len),fill=True, color="95B3D7")
     diff_len=diff_len+item['diff_len']-1
 set_border(ws, "F2:"+"H"+str(len(diff_table)+2))
+
+###Форматируем skipped sheet
+ws = wb["Skipped tests"]
+set_border(ws, "A1:"+"B"+str(len(skipped_df)+1))
 wb.save("report/"+timestr+".xlsx")
 

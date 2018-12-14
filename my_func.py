@@ -353,3 +353,31 @@ def get_url_df(operator,header):
                  'url': values
                 	 })
     return url_df
+
+def get_skipped_df(url_with_dict):
+    def get_skipped_dict(url_list):
+        for url in url_list:
+            bash(url)
+        grep = bash('grep -r "xfail" download/').value()
+        grep_list=grep.split("\n")
+        grep_dict={}
+        for item in grep_list[1:]:
+            test_name=item[item.find("/")+1:item.find(":")-4].strip()
+            test_name=test_name[test_name.find("/")+1:]
+            reason=item[item.find(":")+7:].strip().strip("'")
+            grep_dict[test_name]=reason
+        return grep_dict
+
+    wget_cmd='wget -nd -r -l2 --no-parent -A ".ini" --directory-prefix=./download/scenario ftp://10.72.1.239/Dumps/{}/'
+    url_list=[wget_cmd.format(operator['scenario']) for operator in url_with_dict]
+
+    skipped_dict=get_skipped_dict(url_list)
+    keys=list(skipped_dict.keys())
+    values=list(skipped_dict.values())
+    
+    skipped_df=pd.DataFrame(
+        {'TEST': keys,
+         'Reason of FAIL': values
+        })
+    return skipped_df
+
