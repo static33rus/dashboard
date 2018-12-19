@@ -68,12 +68,13 @@ builds_to_diff={
 	     "builds":build_num
 }
 
-# operators=[beeline,mts,megafon,rtk,tele2,sbertel]
-operators=[all_operators]
+operators=[megafon]
+# operators=[beeline,mts,megafon,rtk,sbertel]
+# operators=[all_operators]
 
 ##Get list of dictionary's with url list
 dict_with_url=get_url(operators)
-download_from_url(dict_with_url, number_of_progons)
+# download_from_url(dict_with_url, number_of_progons)
 
 total_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])
 total_previous_df=pd.DataFrame(columns=[" ","PASSED","FAILED","SKIPPED"])

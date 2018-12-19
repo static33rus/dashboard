@@ -16,12 +16,12 @@ from openpyxl.utils import coordinate_from_string
 PATH=os.getcwd()
 
 def merge_df_and_save_to_csv(dict_with_url, number_of_progons):
-    cols=list(range(2,number_of_progons+3))
+    columns_to_skip = ['Package','Class']
     timestr = time.strftime("%Y.%m.%d")
     excel_writer = pd.ExcelWriter("report/"+timestr+".xlsx", engine='xlsxwriter')
     for operator in dict_with_url:
         for i in range (1,len(operator['url'])+1):
-            df = pd.read_csv("download/{}{}.csv".format(operator['provider'],i),usecols=cols)
+            df = pd.read_csv("download/{}{}.csv".format(operator['provider'],i),usecols=lambda x: x not in columns_to_skip)
             df = remove_rows_csv(df,number_of_progons,["SORM.test","start_sorm","test_stop"])
             if i==1:
                 header=list(df.columns)
@@ -84,7 +84,7 @@ def download_from_url(url_list,num,sleep=3):
                     driver.find_element_by_id("noofbuilds").send_keys(str(num))
                     time.sleep(sleep)
                 search_box = driver.find_element_by_id('downloadCSV').click()
-                time.sleep(1)
+                time.sleep(1.5)
                 os.rename('download/Test Results.csv', newname)
                 n-=1
         time.sleep(2)
