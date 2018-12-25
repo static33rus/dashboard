@@ -68,8 +68,7 @@ builds_to_diff={
 	     "builds":build_num
 }
 
-operators=[megafon]
-# operators=[beeline,mts,megafon,rtk,sbertel]
+operators=[beeline,mts,megafon,rtk,sbertel]
 # operators=[all_operators]
 
 ##Get list of dictionary's with url list
@@ -155,6 +154,7 @@ for operator in dict_with_url:
     operator['diff_len']=len(diff_for_one_operator)+1
     operator['ver_len']=len(ver_df)+1
     operator['url_len']=len(url_df)+1
+    operator['real_num_of_progons']=real_num_of_progons
 
 skipped_df=get_skipped_df(dict_with_url)
 total_df.loc[len(total_df)]=["Всего: ",total_passed,total_failed,total_skipped]
@@ -181,12 +181,11 @@ if NEED_FOR_USER_DIFF==True:
     add_user_diff_to_excel(builds_to_diff, timestr, real_num_of_progons)
 
 ###Форматирование получившегося excel: создание границы таблицы и подсветка шапки
-width1=real_num_of_progons+1 #Ширина первой таблицы
 width2=3 #Ширина второй табицы
 empty=1  #Количество колонок между таблицами
-
 wb = openpyxl.load_workbook("report/"+timestr+".xlsx")
 for operator in dict_with_url:
+    width1=operator['real_num_of_progons']+1 #Ширина первой таблицы
     ws = wb[operator['provider']]
     if real_num_of_progons>number_of_progons:
         print("Скорее всего сейчас проходит очередной прогон или один из прогонов не завершился успешно")
