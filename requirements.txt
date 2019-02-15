@@ -1,0 +1,6 @@
+sudo yum install mysql-devel MySQL-python
+pip3.6 install mysqlclient
+pip3.6 install openpyxl
+pip3.6 install python-redmine
+pandas==0.23.4 xlsxwriter==1.1.2 openpyxl==2.2.5
+pip3.6 install pillow
