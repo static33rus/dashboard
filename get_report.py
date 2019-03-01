@@ -82,7 +82,7 @@ tests= {"daily":[all_operators],
 operators=tests[sys.argv[1]]
 branch=sys.argv[2]
 
-autotest=Database(host="10.2.7.29", user="root", passwd="12121212", db="autotest")
+autotest=Database(host="10.72.1.17", user="dash", passwd="12121212", db="autotest")
 report=Report()
 chart=Chart(len(operators))
 timestr = time.strftime("%Y.%m.%d")

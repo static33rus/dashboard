@@ -2,6 +2,7 @@ from pprint import pprint
 import xml.etree.ElementTree as etree
 import pandas as pd
 import MySQLdb
+import subprocess
 class Database:
 	def __init__(self, host="10.2.7.29", user="root", passwd="12121212", db="autotest"):
 		self.db = MySQLdb.connect(host, user, passwd, db)
@@ -16,6 +17,13 @@ class Database:
 			total.append(item[0])
 		return total
 
+	def select_list_of_rows(self,string):
+		self.cursor.execute(string)
+		total=list()
+		for item in self.cursor.fetchall():	
+			total.append(item)
+		return total
+
 	def parse_xml(self,xml,dumptemplate,date):
 ## Method parse xml and return list
 ## Each list consist of [dumptemplate,test_name,result,reason,duration,date], example: [CFU,CFU_1_Megafon,FAILED,"Reason of fail/skipped",30.23,12.10.2018]
@@ -24,7 +32,7 @@ class Database:
 		self.parser=list()
 		for child in self.root:
 			self.test_info=[dumptemplate]
-			self.test_info.append(child.attrib['name'][14:-5])
+			self.test_info.append(child.attrib['name'][child.attrib['name'].find("[")+6:child.attrib['name'].find(".dmp")])
 			if len(child)==0:
 				self.test_info.append("PASSED")
 				self.test_info.append("")       
@@ -36,7 +44,9 @@ class Database:
 			self.parser.append(self.test_info)
 		return self.parser
 
-	def parse_versions(self,path):
+	def parse_versions(self):
+		path=subprocess.Popen("find . -name versions.log", shell=True, stdout=subprocess.PIPE)
+		path=path.stdout.read().decode('utf-8').strip()
 		self.f=open(path,"r")
 		self.versions=self.f.read()
 		self.f.close()

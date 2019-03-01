@@ -10,10 +10,9 @@ build=sys.argv[4]
 date = time.strftime("%Y.%m.%d %H:%M:%S")
 
 
-autotest=Database(host="10.2.7.29", user="root", passwd="12121212", db="autotest")
+autotest=Database(host="10.72.1.17", user="dash", passwd="12121212", db="autotest")
 list_from_xml=autotest.parse_xml("out_report.xml",dumptemplate,date)
-
-list_from_versions=autotest.parse_versions("./SORM/versions.log")
+list_from_versions=autotest.parse_versions()
 
 job_id=autotest.insert_row(table="job",
 							column="job",
