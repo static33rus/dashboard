@@ -8,8 +8,8 @@ from modules.database import *
 from time import time
 import json
 
-builds_in_report=2
-builds_in_dropdown=7
+builds_in_report=2 ### Кол-во столбцов в таблице с результатами тестов
+builds_in_dropdown=7 ###Кол-во значений в выпадающих меню
 color = ['#9ACD32', '#FF4500', '#FFFFE0', '#D0F9B1']
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 branch=["Release","Develop"]
@@ -18,6 +18,12 @@ autotest=Database(host="10.72.1.17", user="dash", passwd="12121212", db="autotes
 
 app = dash.Dash(__name__,external_stylesheets=external_stylesheets)
 app.config['suppress_callback_exceptions'] = True
+'''
+Layout - это структура html страницы (размер div, позиционирование и тд).
+app.layout - основной layout, который отображается всегда. В данном случае это tab'ы 
+first_layout - это то, что отобразится при нажатии на tab'ы для функциональных тестов
+second_layout - то, что отобразится при нажатии на dpdk tab
+'''
 app.layout=html.Div([
 					dcc.Tabs(
 							value='Beeline',
@@ -117,12 +123,20 @@ second_layout = [
   html.Div(id='intermediate-value', style={'display': 'none'}),
 ]
 
+'''
+Callback - это декоратор, который передает функции input значения и указывает какому элементу объекта layout вернуть ouput значения.
+Простыми словами: callback позволяет динамически изменять страницу при определенных действиях: нажатии на кнопку и тд 
+'''
 @app.callback(
 	dash.dependencies.Output('intermediate-value', 'children'),
 	[dash.dependencies.Input('tabs', 'value'),
 	dash.dependencies.Input('branch_dropdown', 'value'),
 	dash.dependencies.Input('slider', 'value')])
 def sql_queries(tab_value,branch_value,slider_value):
+'''
+Данный callback принимает значения нажатой вкладки, выпадающего меню и слайдера. Затем подключается к базе и считывает все нужные данные, после их хранит
+в sql_dump'e
+'''
 	sql_data={}
 	if tab_value!='DPDK':
 		beeline={
@@ -201,6 +215,9 @@ def sql_queries(tab_value,branch_value,slider_value):
   Output('tab-output', 'children'),
   [Input('tabs', 'value')])
 def show_content(value):
+'''
+Данный callback возвращает нужный layout в зависимости от нажатой кнопки
+'''
 	if value != 'DPDK':
 		return first_layout
 	else:
